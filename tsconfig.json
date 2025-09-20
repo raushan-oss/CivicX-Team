@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "target": "ES6",
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "components/ui/badge.jsx", "components/ui/avatar.jsx", "components/ui/aspect-ratio.jsx", "components/ui/alert.jsx", "components/ui/alert-dialog.jsx", "components/ui/accordion.jsx", "components/ui/carousel.jsx", "components/ui/card.jsx", "components/ui/calendar.jsx", "components/ui/button.jsx", "components/ui/breadcrumb.jsx", "components/ui/chart.jsx", "components/ui/collapsible.jsx", "components/ui/checkbox.jsx", "components/ui/context-menu.jsx", "components/ui/command.jsx", "components/ui/dialog.jsx", "components/ui/drawer.jsx"],
+  "exclude": ["node_modules"]
+}
