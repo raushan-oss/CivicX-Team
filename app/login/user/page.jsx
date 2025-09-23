@@ -55,27 +55,27 @@ export default function UserLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-background dark flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
       <div className="absolute top-6 left-6 flex items-center gap-2">
         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
           <Leaf className="w-5 h-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold text-foreground">CivicX</span>
+        <span className="text-lg font-semibold text-white">CivicX</span>
       </div>
 
       <div className="w-full max-w-md">
-        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8">
+        <Link href="/" className="inline-flex items-center text-muted-foreground hover:text-white mb-8">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Home
         </Link>
 
-        <Card className="border-border/50 shadow-lg">
+        <Card className="bg-[#1A2B3B] border-border/50 shadow-lg">
           <CardHeader className="text-center">
-            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
-              <Users className="w-6 h-6 text-primary" />
+            <div className="mx-auto w-12 h-12 bg-secondary/10 rounded-lg flex items-center justify-center mb-4">
+              <Users className="w-6 h-6 text-white" />
             </div>
-            <CardTitle className="text-2xl">Citizen Login</CardTitle>
-            <CardDescription>Sign in to report civic issues in your community</CardDescription>
+            <CardTitle className="text-2xl text-white">Citizen Login</CardTitle>
+            <CardDescription className="text-gray-300">Sign in to report civic issues in your community</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -85,7 +85,7 @@ export default function UserLogin() {
                   {error}
                 </div>
               )}
-              <div className="space-y-2">
+              <div className="space-y-2 text-white">
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
@@ -97,7 +97,7 @@ export default function UserLogin() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-white">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -112,7 +112,7 @@ export default function UserLogin() {
               </Button>
 
               {/* ✅ Sign Up link added here */}
-              <p className="text-sm text-center text-muted-foreground mt-3">
+              <p className="text-sm text-center text-white mt-3">
                 Don’t have an account?{" "}
                 <Link href="/register/user" className="text-primary hover:underline">
                   Sign Up
@@ -126,9 +126,9 @@ export default function UserLogin() {
               </p>
             </div>
             <div className="mt-6 pt-4 border-t border-border text-center">
-              <p className="text-xs text-muted-foreground">
-                Created by <span className="text-primary font-medium">CivicX</span>
-              </p>
+              <p style={{ marginTop: "15px", color: "white", textAlign: "center" }}>
+          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>CivicX</span>
+        </p>
             </div>
           </CardContent>
         </Card>

@@ -183,11 +183,11 @@ export default function WorkerDashboard() {
               <span className="text-sm font-medium text-slate-300">CivicX</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Worker Dashboard</h1>
+              <h1 className="text-xl font-bold text-white">Worker Dashboard</h1>
               <p className="text-slate-300">Welcome back, {userEmail}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-white">
             <NotificationSystem userEmail={userEmail} userRole="worker" />
             <Button
               variant="outline"

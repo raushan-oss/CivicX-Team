@@ -46,9 +46,9 @@ export default function AdminDashboard() {
     const workerList = JSON.parse(
       localStorage.getItem("workers") ||
         JSON.stringify([
-          { id: "1", name: "John Smith", email: "john@city.gov", status: "available", assignedTasks: 2 },
-          { id: "2", name: "Sarah Johnson", email: "sarah@city.gov", status: "busy", assignedTasks: 5 },
-          { id: "3", name: "Mike Wilson", email: "mike@city.gov", status: "available", assignedTasks: 1 },
+          { id: "1", name: "John", email: "ssr@city.gov", status: "available", assignedTasks: 2 },
+          { id: "2", name: "Sarah", email: "abdh@city.gov", status: "busy", assignedTasks: 5 },
+          { id: "3", name: "Mike", email: "kum@city.gov", status: "available", assignedTasks: 1 },
         ]),
     )
     setWorkers(workerList)
@@ -150,11 +150,11 @@ export default function AdminDashboard() {
               <span className="text-sm font-medium text-slate-300">CivicX</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+              <h1 className="text-xl font-bold text-white">Admin Dashboard</h1>
               <p className="text-slate-300">Municipal Services Management</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 text-white">
             <NotificationSystem userEmail={userEmail} userRole="admin" />
             <Button
               variant="outline"
@@ -249,7 +249,7 @@ export default function AdminDashboard() {
                 <SelectTrigger className="w-40 bg-slate-800 border-slate-600 text-white">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-600">
+                <SelectContent className="bg-slate-800 border-slate-600 text-white">
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="approved">Approved</SelectItem>
@@ -262,12 +262,12 @@ export default function AdminDashboard() {
                 <SelectTrigger className="w-40 bg-slate-800 border-slate-600 text-white">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-600">
+                <SelectContent className="bg-slate-800 border-slate-600 text-white">
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="pothole">Pothole</SelectItem>
                   <SelectItem value="garbage">Garbage</SelectItem>
                   <SelectItem value="streetlight">Street Light</SelectItem>
-                  <SelectItem value="sidewalk">Sidewalk</SelectItem>
+                  
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>

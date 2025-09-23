@@ -98,7 +98,7 @@ export default function NewReport() {
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!formData.title || !formData.description || !formData.type || !formData.location) {
+    if (!formData.title || !formData.description || !formData.location) {
       alert("Please fill in all required fields")
       return
     }
@@ -137,11 +137,11 @@ export default function NewReport() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-300">
       <div className="container mx-auto px-4 py-8">
         <Link
           href="/dashboard/user"
-          className="inline-flex items-center text-muted-foreground hover:text-foreground mb-8"
+          className="inline-flex items-center text-primary hover:text-foreground mb-8"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Dashboard
@@ -167,24 +167,7 @@ export default function NewReport() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="type">Issue Type *</Label>
-                <Select
-                  value={formData.type}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select issue type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pothole">Pothole</SelectItem>
-                    <SelectItem value="garbage">Garbage/Litter</SelectItem>
-                    <SelectItem value="streetlight">Street Light</SelectItem>
-                    <SelectItem value="sidewalk">Sidewalk Damage</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              
 
               <div className="space-y-2">
                 <Label htmlFor="description">Description *</Label>
@@ -208,8 +191,8 @@ export default function NewReport() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
                     required
                   />
-                  <Button type="button" variant="outline" onClick={getCurrentLocation} className="gap-2 bg-transparent">
-                    <MapPin className="w-4 h-4" />
+                  <Button type="button" variant="outline" onClick={getCurrentLocation} className="gap-2 bg-red-700">
+                    <MapPin className="w-4 h-4 " />
                     Use Current
                   </Button>
                 </div>
