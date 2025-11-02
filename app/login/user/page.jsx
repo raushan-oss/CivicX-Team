@@ -127,7 +127,7 @@ export default function UserLogin() {
             </div>
             <div className="mt-6 pt-4 border-t border-border text-center">
               <p style={{ marginTop: "15px", color: "white", textAlign: "center" }}>
-          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>CivicX</span>
+          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>CivicCare</span>
         </p>
             </div>
           </CardContent>
