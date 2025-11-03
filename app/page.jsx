@@ -21,7 +21,7 @@ export default function HomePage() {
         <div className="text-center mb-16">
           <h1 className="text-4xl font-bold text-white mb-4 text-balance">CivicReport</h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto text-pretty">
-            Report civic issues like potholes and garbage. Help make your community better.
+            Report civic issues like garbage. Help make your community better.
           </p>
         </div>
 
