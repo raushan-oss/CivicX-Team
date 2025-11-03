@@ -10,7 +10,7 @@ import "./globals.css"
 export const metadata: Metadata = {
   title: "CivicReport - Municipal Issue Reporting",
   description: "Report and track civic issues like garbage in your community",
-  generator: "v0.app",
+ ,
 }
 
 export default function RootLayout({
