@@ -33,7 +33,7 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-white">Citizen Portal</CardTitle>
               <CardDescription className="text-slate-300">
-                Report potholes, garbage, and other civic issues in your area
+                Report garbage and other civic issues in your area
               </CardDescription>
             </CardHeader>
             <CardContent>
