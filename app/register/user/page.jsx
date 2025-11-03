@@ -91,7 +91,7 @@ export default function SignUpPage() {
         </p>
 
         <p style={{ marginTop: "15px", color: "white", textAlign: "center" }}>
-          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>CivicCare</span>
+          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>PickUpNow</span>
         </p>
       </div>
     </div>
