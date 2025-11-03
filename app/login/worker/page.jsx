@@ -64,7 +64,7 @@ export default function WorkerLogin() {
         <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
           <Leaf className="w-5 h-5 text-primary-foreground" />
         </div>
-        <span className="text-lg font-semibold text-white">CivicCare</span>
+        <span className="text-lg font-semibold text-white">PickUpNow</span>
       </div>
 
       <div className="w-full max-w-md">
@@ -122,7 +122,7 @@ export default function WorkerLogin() {
             </div>
             <div className="mt-6 pt-4 border-t border-border text-center">
               <p style={{ marginTop: "15px", color: "white", textAlign: "center" }}>
-          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>CivicCare</span>
+          Created by <span style={{ color: "limegreen", fontWeight: "bold" }}>PickUpNow</span>
         </p>
             </div>
           </CardContent>
