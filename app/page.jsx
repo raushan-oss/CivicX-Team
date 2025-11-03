@@ -12,7 +12,7 @@ export default function HomePage() {
             <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
             <Leaf className="w-5 h-5 text-black" />
             </div>
-            <span className="text-lg font-semibold text-white">CivicCare</span>
+            <span className="text-lg font-semibold text-white">PickUpNow</span>
           </div>
         </div>
       </header>
