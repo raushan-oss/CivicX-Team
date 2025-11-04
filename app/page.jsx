@@ -34,6 +34,8 @@ export default function HomePage() {
               <CardTitle className="text-white">Citizen Portal</CardTitle>
               <CardDescription className="text-slate-300">
                 Report garbage issues in your area
+
+    
               </CardDescription>
             </CardHeader>
             <CardContent>
