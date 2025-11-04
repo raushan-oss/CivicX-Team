@@ -32,11 +32,10 @@ export default function HomePage() {
                 <Users className="w-6 h-6 text-emerald-400" />
               </div>
               <CardTitle className="text-white">Citizen Portal</CardTitle>
-              <CardDescription className="text-slate-300">
-                Report garbage issues in your area
+              <CardDescription className="text-slate-300" style={{ paddingBottom: "16px" }}>
+  Report garbage issues in your area
+</CardDescription>
 
-    
-              </CardDescription>
             </CardHeader>
             <CardContent>
               <Link href="/login/user">
