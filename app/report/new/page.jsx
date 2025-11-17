@@ -3,13 +3,31 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import dynamic from "next/dynamic"
+import L from "leaflet"
+import "leaflet/dist/leaflet.css"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Camera, MapPin, Upload, AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
+import { MapPin, Camera, Upload, AlertTriangle, CheckCircle, Loader2, ArrowLeft } from "lucide-react"
+
+// Fix leaflet icon paths (prevents missing marker images)
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+})
+
+// dynamic imports for react-leaflet to avoid SSR issues
+const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false })
+const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false })
+const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false })
+const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false })
+const useMapEventsDyn = dynamic(() => import("react-leaflet").then((m) => m.useMapEvents), { ssr: false })
 
 export default function NewReport() {
   const [formData, setFormData] = useState({
@@ -17,8 +35,10 @@ export default function NewReport() {
     description: "",
     type: "",
     location: "",
+    coords: null, // { lat, lng }
     image: null,
   })
+
   const [imagePreview, setImagePreview] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [locationError, setLocationError] = useState("")
@@ -27,21 +47,20 @@ export default function NewReport() {
   const fileInputRef = useRef(null)
   const router = useRouter()
 
+  // Protect route: only allow 'user'
   useEffect(() => {
     const role = localStorage.getItem("userRole")
-    if (role !== "user") {
-      router.push("/")
-    }
+    if (role !== "user") router.push("/")
   }, [router])
 
+  // IMAGE upload and AI validation (unchanged)
   const handleImageUpload = async (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files?.[0]
     if (!file) return
 
-    // Create preview
     const reader = new FileReader()
-    reader.onload = async (e) => {
-      const imageData = e.target.result
+    reader.onload = async (event) => {
+      const imageData = event.target.result
       setImagePreview(imageData)
       setFormData((prev) => ({ ...prev, image: imageData }))
 
@@ -51,66 +70,116 @@ export default function NewReport() {
       try {
         const response = await fetch("/api/validate-image", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageData }),
         })
 
         const validation = await response.json()
         setImageValidation(validation)
       } catch (error) {
-        console.error("Validation error:", error)
         setImageValidation({
           isValid: false,
           confidence: 0,
           message: "Failed to validate image. Please try again.",
-          suggestions: ["Please try uploading the image again"],
+          suggestions: ["Try uploading again"],
         })
       } finally {
         setIsValidatingImage(false)
       }
     }
+
     reader.readAsDataURL(file)
   }
 
+  // Reverse geocode helper (Nominatim)
+  async function reverseGeocode(lat, lon) {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`
+      )
+      const data = await res.json()
+      const addr = data.address || {}
+      const area = addr.neighbourhood || addr.suburb || addr.county || ""
+      const city = addr.city || addr.town || addr.village || ""
+      const pincode = addr.postcode || ""
+      const parts = [area, city, pincode].filter((p) => p && p.trim() !== "")
+      const place = parts.length ? parts.join(", ") : data.display_name || `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+      return place
+    } catch (err) {
+      return `${lat.toFixed(6)}, ${lon.toFixed(6)}`
+    }
+  }
+
+  // Geocode typed address -> coordinates (Nominatim)
+  async function geocodeAddress(address) {
+    if (!address || address.trim() === "") return null
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+      )
+      const results = await res.json()
+      if (results && results.length > 0) {
+        const { lat, lon } = results[0]
+        return { lat: parseFloat(lat), lng: parseFloat(lon) }
+      }
+      return null
+    } catch (err) {
+      return null
+    }
+  }
+
+  // When location string changes (typed or set), try geocoding after short debounce
+  useEffect(() => {
+    let t
+    async function doGeocode() {
+      // If coords already present, do nothing
+      if (formData.coords) return
+      const coords = await geocodeAddress(formData.location)
+      if (coords) {
+        setFormData((prev) => ({ ...prev, coords }))
+      }
+    }
+    // debounce so we don't hit API on every keystroke
+    t = setTimeout(doGeocode, 700)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.location])
+
+  // Use current location — set human-readable location and coords
   const getCurrentLocation = () => {
     if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser")
+      setLocationError("Geolocation is not supported in this browser")
       return
     }
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const { latitude, longitude } = position.coords
-        setFormData((prev) => ({
-          ...prev,
-          location: `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
-        }))
+        setFormData((prev) => ({ ...prev, coords: { lat: latitude, lng: longitude } }))
         setLocationError("")
+        const placeName = await reverseGeocode(latitude, longitude)
+        setFormData((prev) => ({ ...prev, location: placeName, coords: { lat: latitude, lng: longitude } }))
       },
-      (error) => {
-        setLocationError("Unable to retrieve location. Please enter manually.")
-      },
+      () => setLocationError("Unable to retrieve location. Enter manually.")
     )
   }
 
-  const handleSubmit = async (e) => {
+  // Submit new report (unchanged)
+  const handleSubmit = (e) => {
     e.preventDefault()
 
     if (!formData.title || !formData.description || !formData.location) {
-      alert("Please fill in all required fields")
+      alert("Please fill all required fields")
       return
     }
 
     if (imageValidation && !imageValidation.isValid) {
-      alert("Please upload a valid image showing the civic issue")
+      alert("Upload a valid image showing the issue")
       return
     }
 
     setIsSubmitting(true)
 
-    // Create new report
     const newReport = {
       id: Date.now().toString(),
       ...formData,
@@ -120,7 +189,6 @@ export default function NewReport() {
       aiValidation: imageValidation,
     }
 
-    // Save to localStorage (simulate database)
     const existingReports = JSON.parse(localStorage.getItem("userReports") || "[]")
     const allReports = JSON.parse(localStorage.getItem("allReports") || "[]")
 
@@ -136,6 +204,59 @@ export default function NewReport() {
     }, 1500)
   }
 
+  /************* MapViewer inner component *************/
+  // This uses dynamic useMapEvents — wrapped to avoid SSR issues
+  function MapViewer({ coords, locationText }) {
+    // coords: { lat, lng } or null
+    const center = coords || { lat: 20.5937, lng: 78.9629 } // default India center
+    const [markerPos, setMarkerPos] = useState(coords)
+    const [loaded, setLoaded] = useState(false)
+
+    // keep marker in sync if coords prop changes
+    useEffect(() => {
+      setMarkerPos(coords)
+      setLoaded(true)
+    }, [coords])
+
+    // dynamic map click handler component
+    function ClickHandlerInner() {
+      const useMapEvents = require("react-leaflet").useMapEvents
+      useMapEvents({
+        click: async (e) => {
+          const { lat, lng } = e.latlng
+          setMarkerPos({ lat, lng })
+          const place = await reverseGeocode(lat, lng)
+          setFormData((prev) => ({ ...prev, location: place, coords: { lat, lng } }))
+        },
+      })
+      return null
+    }
+
+    // If react-leaflet components haven't loaded, render a placeholder
+    if (!MapContainer || !TileLayer || !Marker || !Popup) {
+      return <div className="h-64 flex items-center justify-center">Loading map...</div>
+    }
+
+    return (
+      <div className="w-full h-64 rounded overflow-hidden shadow-sm">
+        {/* @ts-ignore */}
+        <MapContainer center={[center.lat, center.lng]} zoom={14} style={{ height: "100%", width: "100%" }}>
+          {/* @ts-ignore */}
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <ClickHandlerInner />
+          {markerPos && (
+            // @ts-ignore
+            <Marker position={[markerPos.lat, markerPos.lng]}>
+              {/* @ts-ignore */}
+              <Popup>{locationText || `${markerPos.lat.toFixed(6)}, ${markerPos.lng.toFixed(6)}`}</Popup>
+            </Marker>
+          )}
+        </MapContainer>
+      </div>
+    )
+  }
+
+  /************* JSX: form UI *************/
   return (
     <div className="min-h-screen bg-gray-300">
       <div className="container mx-auto px-4 py-8">
@@ -150,77 +271,93 @@ export default function NewReport() {
         <Card className="max-w-2xl mx-auto">
           <CardHeader>
             <CardTitle>Report Civic Issue</CardTitle>
-            <CardDescription>
-              Help improve your community by reporting potholes, garbage, and other issues
-            </CardDescription>
+            <CardDescription>Help improve the community by reporting issues</CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* TITLE */}
               <div className="space-y-2">
                 <Label htmlFor="title">Issue Title *</Label>
                 <Input
                   id="title"
-                  placeholder="e.g., Large pothole on Main Street"
                   value={formData.title}
+                  placeholder="e.g., Large pothole on Main Street"
                   onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                   required
                 />
               </div>
 
-              
-
+              {/* DESCRIPTION */}
               <div className="space-y-2">
                 <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
-                  placeholder="Describe the issue in detail..."
+                  rows={4}
+                  placeholder="Describe the issue..."
                   value={formData.description}
                   onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                  rows={4}
                   required
                 />
               </div>
 
+              {/* LOCATION with map below */}
               <div className="space-y-2">
                 <Label htmlFor="location">Location *</Label>
                 <div className="flex gap-2">
                   <Input
                     id="location"
-                    placeholder="Enter address or coordinates"
                     value={formData.location}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                    placeholder="Enter address or coordinates"
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, location: e.target.value, coords: null }))
+                    }}
                     required
                   />
-                  <Button type="button" variant="outline" onClick={getCurrentLocation} className="gap-2 bg-red-700">
-                    <MapPin className="w-4 h-4 " />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-2 bg-red-700"
+                    onClick={getCurrentLocation}
+                  >
+                    <MapPin className="w-4 h-4" />
                     Use Current
                   </Button>
                 </div>
-                {locationError && <p className="text-sm text-destructive">{locationError}</p>}
+                {locationError && <p className="text-sm text-red-600">{locationError}</p>}
+
+                {/* LIVE MAP */}
+                <div className="mt-3">
+                  <MapViewer coords={formData.coords} locationText={formData.location} />
+                </div>
               </div>
 
+              {/* PHOTO UPLOAD */}
               <div className="space-y-2">
                 <Label>Photo Evidence</Label>
-                <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                <div className="border-2 border-dashed rounded-lg p-6 text-center">
                   {imagePreview ? (
                     <div className="space-y-4">
                       <img
-                        src={imagePreview || "/placeholder.svg"}
+                        src={imagePreview}
                         alt="Preview"
                         className="max-w-full h-48 object-cover rounded-lg mx-auto"
                       />
+
                       {isValidatingImage && (
                         <div className="flex items-center justify-center gap-2 text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
                           AI is analyzing your image...
                         </div>
                       )}
+
+                      {/* Image Validation */}
                       {imageValidation && (
                         <div
                           className={`p-4 rounded-lg border ${
                             imageValidation.isValid
-                              ? "bg-green-50 border-green-200 text-green-800 dark:bg-green-950 dark:border-green-800 dark:text-green-200"
-                              : "bg-red-50 border-red-200 text-red-800 dark:bg-red-950 dark:border-red-800 dark:text-red-200"
+                              ? "bg-green-50 border-green-200 text-green-700"
+                              : "bg-red-50 border-red-200 text-red-700"
                           }`}
                         >
                           <div className="flex items-center gap-2 mb-2">
@@ -230,50 +367,43 @@ export default function NewReport() {
                               <AlertTriangle className="w-5 h-5" />
                             )}
                             <span className="font-medium">
-                              {imageValidation.isValid ? "Valid Civic Issue" : "Invalid Image"}
-                              {imageValidation.confidence > 0 && ` (${imageValidation.confidence}% confidence)`}
+                              {imageValidation.isValid ? "Valid Issue" : "Invalid Image"}{" "}
+                              {imageValidation.confidence &&
+                                `(${imageValidation.confidence}% confidence)`}
                             </span>
                           </div>
+
                           <p className="text-sm mb-2">{imageValidation.message}</p>
-                          {imageValidation.issueType && imageValidation.issueType !== "none" && (
-                            <p className="text-sm mb-2">
-                              <strong>Detected:</strong>{" "}
-                              {imageValidation.issueType.charAt(0).toUpperCase() + imageValidation.issueType.slice(1)}
-                            </p>
-                          )}
-                          {imageValidation.suggestions && imageValidation.suggestions.length > 0 && (
-                            <div className="text-sm">
-                              <strong>Suggestions:</strong>
-                              <ul className="list-disc list-inside mt-1">
-                                {imageValidation.suggestions.map((suggestion, index) => (
-                                  <li key={index}>{suggestion}</li>
-                                ))}
-                              </ul>
-                            </div>
+
+                          {imageValidation.suggestions?.length > 0 && (
+                            <ul className="list-disc list-inside text-sm">
+                              {imageValidation.suggestions.map((s, i) => (
+                                <li key={i}>{s}</li>
+                              ))}
+                            </ul>
                           )}
                         </div>
                       )}
-                      <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
                         Change Photo
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <Camera className="w-12 h-12 text-muted-foreground mx-auto" />
-                      <div>
-                        <p className="text-muted-foreground mb-2">Upload a photo of the issue</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="gap-2"
-                        >
-                          <Upload className="w-4 h-4" />
-                          Choose Photo
-                        </Button>
-                      </div>
+                      <p className="text-muted-foreground">Upload a photo of the issue</p>
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Choose Photo
+                      </Button>
                     </div>
                   )}
+
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -284,12 +414,13 @@ export default function NewReport() {
                 </div>
               </div>
 
+              {/* SUBMIT */}
               <Button
                 type="submit"
                 className="w-full"
                 disabled={isSubmitting || isValidatingImage || (imageValidation && !imageValidation.isValid)}
               >
-                {isSubmitting ? "Submitting Report..." : "Submit Report"}
+                {isSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
             </form>
           </CardContent>
