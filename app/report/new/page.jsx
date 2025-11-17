@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import dynamic from "next/dynamic"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,20 +12,11 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { MapPin, Camera, Upload, AlertTriangle, CheckCircle, Loader2, ArrowLeft } from "lucide-react"
 
-// Fix leaflet icon paths (prevents missing marker images)
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-})
-
 // dynamic imports for react-leaflet to avoid SSR issues
 const MapContainer = dynamic(() => import("react-leaflet").then((m) => m.MapContainer), { ssr: false })
 const TileLayer = dynamic(() => import("react-leaflet").then((m) => m.TileLayer), { ssr: false })
 const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), { ssr: false })
 const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), { ssr: false })
-const useMapEventsDyn = dynamic(() => import("react-leaflet").then((m) => m.useMapEvents), { ssr: false })
 
 export default function NewReport() {
   const [formData, setFormData] = useState({
@@ -35,7 +24,7 @@ export default function NewReport() {
     description: "",
     type: "",
     location: "",
-    coords: null, // { lat, lng }
+    coords: null,
     image: null,
   })
 
@@ -47,13 +36,62 @@ export default function NewReport() {
   const fileInputRef = useRef(null)
   const router = useRouter()
 
+  // Ensure Leaflet library & CSS are only loaded in browser runtime
+  useEffect(() => {
+    let cancelled = false
+
+    async function setupLeaflet() {
+      if (typeof document !== "undefined" && !document.getElementById("leaflet-css")) {
+        const link = document.createElement("link")
+        link.id = "leaflet-css"
+        link.rel = "stylesheet"
+        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        document.head.appendChild(link)
+      }
+
+      try {
+        // dynamic import of leaflet only on client
+        const LModule = await import("leaflet")
+        const L = LModule.default || LModule
+        if (cancelled) return
+
+        // Fix leaflet icon paths (prevents missing marker images)
+        if (L && L.Icon && L.Icon.Default) {
+          // Some bundlers freeze prototype functions; using delete is typical fix used in many examples
+          // ignore errors here, just try to set the icons
+          try {
+            delete L.Icon.Default.prototype._getIconUrl
+          } catch (e) {
+            /* ignore */
+          }
+          L.Icon.Default.mergeOptions({
+            iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+            iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+            shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+          })
+        }
+      } catch (err) {
+        // If leaflet can't load (e.g., during SSR) we silently ignore here.
+        // The dynamic react-leaflet components are ssr: false so they will load on client when available.
+        // eslint-disable-next-line no-console
+        console.warn("Leaflet not initialized (likely running on server).", err)
+      }
+    }
+
+    setupLeaflet()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Protect route: only allow 'user'
   useEffect(() => {
+    if (typeof window === "undefined") return
     const role = localStorage.getItem("userRole")
     if (role !== "user") router.push("/")
   }, [router])
 
-  // IMAGE upload and AI validation (unchanged)
+  // IMAGE upload and AI validation
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -132,14 +170,12 @@ export default function NewReport() {
   useEffect(() => {
     let t
     async function doGeocode() {
-      // If coords already present, do nothing
       if (formData.coords) return
       const coords = await geocodeAddress(formData.location)
       if (coords) {
         setFormData((prev) => ({ ...prev, coords }))
       }
     }
-    // debounce so we don't hit API on every keystroke
     t = setTimeout(doGeocode, 700)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,7 +183,7 @@ export default function NewReport() {
 
   // Use current location — set human-readable location and coords
   const getCurrentLocation = () => {
-    if (!navigator.geolocation) {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
       setLocationError("Geolocation is not supported in this browser")
       return
     }
@@ -164,7 +200,7 @@ export default function NewReport() {
     )
   }
 
-  // Submit new report (unchanged)
+  // Submit new report
   const handleSubmit = (e) => {
     e.preventDefault()
 
@@ -185,7 +221,7 @@ export default function NewReport() {
       ...formData,
       status: "pending",
       createdAt: new Date().toISOString(),
-      userEmail: localStorage.getItem("userEmail"),
+      userEmail: typeof window !== "undefined" ? localStorage.getItem("userEmail") : null,
       aiValidation: imageValidation,
     }
 
@@ -205,34 +241,34 @@ export default function NewReport() {
   }
 
   /************* MapViewer inner component *************/
-  // This uses dynamic useMapEvents — wrapped to avoid SSR issues
   function MapViewer({ coords, locationText }) {
-    // coords: { lat, lng } or null
     const center = coords || { lat: 20.5937, lng: 78.9629 } // default India center
     const [markerPos, setMarkerPos] = useState(coords)
     const [loaded, setLoaded] = useState(false)
 
-    // keep marker in sync if coords prop changes
     useEffect(() => {
       setMarkerPos(coords)
       setLoaded(true)
     }, [coords])
 
-    // dynamic map click handler component
     function ClickHandlerInner() {
-      const useMapEvents = require("react-leaflet").useMapEvents
-      useMapEvents({
-        click: async (e) => {
-          const { lat, lng } = e.latlng
-          setMarkerPos({ lat, lng })
-          const place = await reverseGeocode(lat, lng)
-          setFormData((prev) => ({ ...prev, location: place, coords: { lat, lng } }))
-        },
-      })
+      // require inside runtime so it only runs in client bundle
+      try {
+        const useMapEvents = require("react-leaflet").useMapEvents
+        useMapEvents({
+          click: async (e) => {
+            const { lat, lng } = e.latlng
+            setMarkerPos({ lat, lng })
+            const place = await reverseGeocode(lat, lng)
+            setFormData((prev) => ({ ...prev, location: place, coords: { lat, lng } }))
+          },
+        })
+      } catch (err) {
+        // swallow — if react-leaflet isn't available yet
+      }
       return null
     }
 
-    // If react-leaflet components haven't loaded, render a placeholder
     if (!MapContainer || !TileLayer || !Marker || !Popup) {
       return <div className="h-64 flex items-center justify-center">Loading map...</div>
     }
