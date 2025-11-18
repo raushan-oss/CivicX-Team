@@ -15,6 +15,7 @@ export default function UserDashboard() {
   const router = useRouter()
 
   useEffect(() => {
+    if (typeof window==undefined) return
     const role = localStorage.getItem("userRole")
     const email = localStorage.getItem("userEmail")
 
