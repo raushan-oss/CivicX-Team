@@ -22,6 +22,6 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "components/ui/badge.jsx", "components/ui/avatar.jsx", "components/ui/aspect-ratio.jsx", "components/ui/alert.jsx", "components/ui/alert-dialog.jsx", "components/ui/accordion.jsx", "components/ui/carousel.jsx", "components/ui/card.jsx", "components/ui/calendar.jsx", "components/ui/button.jsx", "components/ui/breadcrumb.jsx", "components/ui/chart.jsx", "components/ui/collapsible.jsx", "components/ui/checkbox.jsx", "components/ui/context-menu.jsx", "components/ui/command.jsx", "components/ui/dialog.jsx", "components/ui/drawer.jsx"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "app/report/new/page.tsx"],
   "exclude": ["node_modules"]
 }
