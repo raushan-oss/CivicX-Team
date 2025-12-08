@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Shield, Users, Wrench, Leaf } from "lucide-react"
+import { Shield, Users, Leaf } from "lucide-react"
 
 export default function HomePage() {
   return (
@@ -10,7 +10,7 @@ export default function HomePage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
-            <Leaf className="w-5 h-5 text-black" />
+              <Leaf className="w-5 h-5 text-black" />
             </div>
             <span className="text-lg font-semibold text-white">PickUpNow</span>
           </div>
@@ -25,7 +25,7 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           <Card className="text-center hover:shadow-lg transition-shadow bg-slate-800 border-slate-700">
             <CardHeader>
               <div className="mx-auto w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
@@ -33,8 +33,8 @@ export default function HomePage() {
               </div>
               <CardTitle className="text-white">Citizen Portal</CardTitle>
               <CardDescription className="text-slate-300" style={{ paddingBottom: "16px" }}>
-  Report garbage issues in your area
-</CardDescription>
+                Report garbage issues in your area
+              </CardDescription>
 
             </CardHeader>
             <CardContent>
@@ -44,27 +44,7 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card className="text-center hover:shadow-lg transition-shadow bg-slate-800 border-slate-700">
-            <CardHeader>
-              <div className="mx-auto w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Wrench className="w-6 h-6 text-emerald-400" />
-              </div>
-              <CardTitle className="text-white">Worker Portal</CardTitle>
-              <CardDescription className="text-slate-300">
-                View assigned tasks and update completion status
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Link href="/login/worker">
-                <Button
-                
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
-                >
-                  Login as Worker
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
+
 
           <Card className="text-center hover:shadow-lg transition-shadow bg-slate-800 border-slate-700">
             <CardHeader>

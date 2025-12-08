@@ -52,12 +52,23 @@ export default function NewReport() {
   const fileInputRef = useRef(null);
   const router = useRouter();
 
+  const [isLoading, setIsLoading] = useState(true)
+
   // only run in browser
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const role = localStorage.getItem("userRole");
-    if (role !== "user") router.push("/");
-  }, [router]);
+    const checkAuth = () => {
+      const role = localStorage.getItem("userRole")
+      if (role !== "user") {
+        router.push("/")
+      }
+      setIsLoading(false)
+    }
+    checkAuth()
+  }, [])
+
+  if (isLoading) {
+    return <div className="min-h-screen bg-gray-300 flex items-center justify-center">Loading...</div>
+  }
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];

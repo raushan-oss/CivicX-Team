@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { NotificationSystem } from "@/components/notifications/notification-system"
+import { NotificationService } from "@/lib/notification-service"
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { AlertCircle, CheckCircle, Clock, MapPin, Eye, UserCheck, LogOut, BarChart3, Filter, Leaf } from "lucide-react"
+import { AlertCircle, CheckCircle, Clock, MapPin, Eye, UserCheck, LogOut, BarChart3, Filter, Leaf, Camera } from "lucide-react"
 
 export default function AdminDashboard() {
   const [userEmail, setUserEmail] = useState("")
@@ -28,32 +29,37 @@ export default function AdminDashboard() {
   const router = useRouter()
 
   useEffect(() => {
-    if (typeof window == undefined) return
-    const role = localStorage.getItem("userRole")
-    const email = localStorage.getItem("userEmail")
+    const checkAuth = () => {
+      const role = localStorage.getItem("userRole")
+      const email = localStorage.getItem("userEmail")
 
-    if (role !== "admin") {
-      router.push("/")
-      return
+      if (role !== "admin") {
+        router.push("/")
+        return
+      }
+
+      if (email) {
+        setUserEmail(email)
+      }
+
+      // Load all reports
+      const allReports = JSON.parse(localStorage.getItem("allReports") || "[]")
+      setReports(allReports)
+
+      // Load workers (simulate worker data)
+      const workerList = JSON.parse(
+        localStorage.getItem("workers") ||
+        JSON.stringify([
+          { id: "1", name: "John", email: "ssr@city.gov", status: "available", assignedTasks: 2 },
+          { id: "2", name: "Sarah", email: "abdh@city.gov", status: "busy", assignedTasks: 5 },
+          { id: "3", name: "Mike", email: "kum@city.gov", status: "available", assignedTasks: 1 },
+        ]),
+      )
+      setWorkers(workerList)
     }
 
-    setUserEmail(email)
-
-    // Load all reports
-    const allReports = JSON.parse(localStorage.getItem("allReports") || "[]")
-    setReports(allReports)
-
-    // Load workers (simulate worker data)
-    const workerList = JSON.parse(
-      localStorage.getItem("workers") ||
-      JSON.stringify([
-        { id: "1", name: "John", email: "ssr@city.gov", status: "available", assignedTasks: 2 },
-        { id: "2", name: "Sarah", email: "abdh@city.gov", status: "busy", assignedTasks: 5 },
-        { id: "3", name: "Mike", email: "kum@city.gov", status: "available", assignedTasks: 1 },
-      ]),
-    )
-    setWorkers(workerList)
-  }, [router])
+    checkAuth()
+  }, [])
 
   const handleLogout = () => {
     localStorage.removeItem("userRole")
@@ -67,6 +73,19 @@ export default function AdminDashboard() {
     )
     setReports(updatedReports)
     localStorage.setItem("allReports", JSON.stringify(updatedReports))
+
+    // Sync with userReports
+    const userReports = JSON.parse(localStorage.getItem("userReports") || "[]")
+    const updatedUserReports = userReports.map((report) =>
+      report.id === reportId ? { ...report, status: "approved" } : report,
+    )
+    localStorage.setItem("userReports", JSON.stringify(updatedUserReports))
+
+    // Send notification
+    const report = reports.find(r => r.id === reportId)
+    if (report) {
+      NotificationService.notifyReportApproved(report)
+    }
   }
 
   const handleRejectReport = (reportId) => {
@@ -75,6 +94,13 @@ export default function AdminDashboard() {
     )
     setReports(updatedReports)
     localStorage.setItem("allReports", JSON.stringify(updatedReports))
+
+    // Sync with userReports
+    const userReports = JSON.parse(localStorage.getItem("userReports") || "[]")
+    const updatedUserReports = userReports.map((report) =>
+      report.id === reportId ? { ...report, status: "rejected" } : report,
+    )
+    localStorage.setItem("userReports", JSON.stringify(updatedUserReports))
   }
 
   const handleAssignWorker = (reportId, workerId) => {
@@ -88,9 +114,69 @@ export default function AdminDashboard() {
     localStorage.setItem("allReports", JSON.stringify(updatedReports))
 
     // Update worker's task count
-    const updatedWorkers = workers.map((w) => (w.id === workerId ? { ...w, assignedTasks: w.assignedTasks + 1 } : w))
+    const updatedWorkers = workers.map((w) =>
+      w.id === workerId ? { ...w, assignedTasks: w.assignedTasks + 1, status: "busy" } : w,
+    )
     setWorkers(updatedWorkers)
     localStorage.setItem("workers", JSON.stringify(updatedWorkers))
+
+    // Sync with userReports
+    const userReports = JSON.parse(localStorage.getItem("userReports") || "[]")
+    const updatedUserReports = userReports.map((report) =>
+      report.id === reportId
+        ? { ...report, status: "assigned", assignedWorker: worker.name, assignedWorkerId: workerId }
+        : report,
+    )
+    localStorage.setItem("userReports", JSON.stringify(updatedUserReports))
+
+    // Send notification
+    const report = reports.find(r => r.id === reportId)
+    if (report) {
+      NotificationService.notifyReportAssigned(report, worker.name)
+    }
+  }
+
+  const handleCompleteReport = (reportId, file) => {
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      const base64String = reader.result
+
+      const updatedReports = reports.map((report) =>
+        report.id === reportId
+          ? {
+            ...report,
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            completionImage: base64String
+          }
+          : report,
+      )
+      setReports(updatedReports)
+      localStorage.setItem("allReports", JSON.stringify(updatedReports))
+
+      // Sync with userReports
+      const userReports = JSON.parse(localStorage.getItem("userReports") || "[]")
+      const updatedUserReports = userReports.map((report) =>
+        report.id === reportId
+          ? {
+            ...report,
+            status: "completed",
+            completedAt: new Date().toISOString(),
+            completionImage: base64String
+          }
+          : report,
+      )
+      localStorage.setItem("userReports", JSON.stringify(updatedUserReports))
+
+      // Send notification
+      const report = reports.find(r => r.id === reportId)
+      if (report) {
+        NotificationService.notifyReportCompleted(report)
+      }
+    }
+    reader.readAsDataURL(file)
   }
 
   const getStatusColor = (status) => {
@@ -299,6 +385,16 @@ export default function AdminDashboard() {
                   <CardContent>
                     <p className="text-slate-300 mb-4">{report.description}</p>
 
+                    {report.image && (
+                      <div className="mb-4">
+                        <img
+                          src={report.image || "/placeholder.svg"}
+                          alt="Report evidence"
+                          className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-600"
+                        />
+                      </div>
+                    )}
+
                     {report.aiValidation && (
                       <div className="mb-4 p-3 bg-slate-700 rounded-lg border border-slate-600">
                         <div className="flex items-center gap-2 mb-1">
@@ -356,6 +452,16 @@ export default function AdminDashboard() {
                                     />
                                   </div>
                                 )}
+                                {selectedReport.completionImage && (
+                                  <div>
+                                    <h4 className="font-medium mb-2 text-white">Completion Evidence</h4>
+                                    <img
+                                      src={selectedReport.completionImage}
+                                      alt="Completion evidence"
+                                      className="w-full max-w-md h-64 object-cover rounded-lg border border-slate-600"
+                                    />
+                                  </div>
+                                )}
                                 <div>
                                   <h4 className="font-medium mb-2 text-white">Submitted</h4>
                                   <p className="text-slate-300">
@@ -389,7 +495,6 @@ export default function AdminDashboard() {
                             </SelectTrigger>
                             <SelectContent className="bg-slate-800 border-slate-600">
                               {workers
-                                .filter((w) => w.status === "available")
                                 .map((worker) => (
                                   <SelectItem key={worker.id} value={worker.id}>
                                     {worker.name}
@@ -397,6 +502,27 @@ export default function AdminDashboard() {
                                 ))}
                             </SelectContent>
                           </Select>
+                        )}
+
+                        {report.status === "assigned" && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              id={`camera-${report.id}`}
+                              onChange={(e) => handleCompleteReport(report.id, e.target.files[0])}
+                            />
+                            <Button
+                              size="sm"
+                              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                              onClick={() => document.getElementById(`camera-${report.id}`).click()}
+                            >
+                              <Camera className="w-4 h-4" />
+                              Complete
+                            </Button>
+                          </div>
                         )}
                       </div>
 

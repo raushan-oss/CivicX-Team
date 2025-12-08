@@ -32,7 +32,23 @@ export function ComplaintModal({ userEmail, report }) {
             // Construct the message with report details if available
             let messageBody = complaint
             if (report) {
+                // Use environment variable for public URL if available (useful for cross-device testing via ngrok or production)
+                // Otherwise fall back to the current window's origin (localhost)
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+
+                const processingLink = `${baseUrl}/complaint-update?reportId=${report.id}&status=processing`
+                const completeLink = `${baseUrl}/complaint-update?reportId=${report.id}&status=completed`
+
                 messageBody += `\n\n--- Related Report Details ---\nTitle: ${report.title}\nDescription: ${report.description}\nLocation: ${report.location}\nReport ID: ${report.id}`
+
+                // Add HTML buttons for the email
+                // Note: We need to send this as 'message' but Web3Forms usually handles text. 
+                // To send HTML we might need a specific config or just rely on the links being clickable.
+                // We'll append clickable links which is safer for basic text emails.
+
+                messageBody += `\n\n--- Admin Actions ---\n`
+                messageBody += `Click here to mark as Processing: ${processingLink}\n\n`
+                messageBody += `Click here to mark as Complete: ${completeLink}`
             }
 
             // Web3Forms submission
@@ -56,6 +72,23 @@ export function ComplaintModal({ userEmail, report }) {
             }
 
             toast.success("Complaint sent successfully")
+
+            // Persist complaint status locally
+            if (report) {
+                const updateLocalReports = (key) => {
+                    const saved = JSON.parse(localStorage.getItem(key) || "[]")
+                    const updated = saved.map(r =>
+                        r.id === report.id
+                            ? { ...r, complaintSent: true, complaintSentAt: new Date().toISOString() }
+                            : r
+                    )
+                    localStorage.setItem(key, JSON.stringify(updated))
+                }
+
+                updateLocalReports("userReports")
+                updateLocalReports("allReports")
+            }
+
             setComplaint("")
             setOpen(false)
         } catch (error) {

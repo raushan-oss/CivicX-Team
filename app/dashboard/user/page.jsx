@@ -8,15 +8,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { NotificationSystem } from "@/components/notifications/notification-system"
 import { ComplaintModal } from "@/components/complaint-modal"
-import { Plus, MapPin, Clock, CheckCircle, AlertCircle, LogOut, Leaf } from "lucide-react"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Plus, MapPin, Clock, CheckCircle, AlertCircle, LogOut, Leaf, Info } from "lucide-react"
 
 export default function UserDashboard() {
   const [userEmail, setUserEmail] = useState("")
   const [reports, setReports] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    if (typeof window == undefined) return
+    // Check auth
     const role = localStorage.getItem("userRole")
     const email = localStorage.getItem("userEmail")
 
@@ -25,17 +27,42 @@ export default function UserDashboard() {
       return
     }
 
-    setUserEmail(email)
+    if (email) {
+      setUserEmail(email)
+    }
 
-    // Load user's reports from localStorage
-    const savedReports = JSON.parse(localStorage.getItem("userReports") || "[]")
-    setReports(savedReports)
+    // Initial load and Polling
+    const loadReports = () => {
+      const savedReports = JSON.parse(localStorage.getItem("userReports") || "[]")
+      setReports(savedReports)
+    }
+
+    loadReports()
+    setIsLoading(false)
+
+    const interval = setInterval(loadReports, 2000)
+
+    return () => clearInterval(interval)
   }, [router])
 
   const handleLogout = () => {
     localStorage.removeItem("userRole")
     localStorage.removeItem("userEmail")
     router.push("/")
+  }
+
+  const handleDeleteReport = (reportId) => {
+    // Remove from local state
+    const updatedReports = reports.filter(report => report.id !== reportId)
+    setReports(updatedReports)
+
+    // Update userReports in localStorage
+    localStorage.setItem("userReports", JSON.stringify(updatedReports))
+
+    // Update allReports in localStorage (for Admin)
+    const allReports = JSON.parse(localStorage.getItem("allReports") || "[]")
+    const updatedAllReports = allReports.filter(report => report.id !== reportId)
+    localStorage.setItem("allReports", JSON.stringify(updatedAllReports))
   }
 
   const getStatusColor = (status) => {
@@ -66,6 +93,10 @@ export default function UserDashboard() {
     }
   }
 
+  if (isLoading) {
+    return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">Loading...</div>
+  }
+
   return (
     <div className="min-h-screen bg-slate-900">
       <header className="border-b border-slate-700 bg-slate-800/50">
@@ -83,8 +114,6 @@ export default function UserDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2 text-white">
-            <NotificationSystem userEmail={userEmail} userRole="user" />
-            <ComplaintModal userEmail={userEmail} />
             <Button
               variant="outline"
               onClick={handleLogout}
@@ -154,11 +183,67 @@ export default function UserDashboard() {
                       />
                     </div>
                   )}
+                  {report.completionImage && (
+                    <div className="mb-4">
+                      <img
+                        src={report.completionImage}
+                        alt="Completion evidence"
+                        className="w-full max-w-md h-48 object-cover rounded-lg border border-slate-600 mb-2"
+                      />
+                      <p className="text-sm font-medium text-emerald-400">Completed task image</p>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-sm text-slate-400">
                     <span>Reported on {new Date(report.createdAt).toLocaleDateString()}</span>
-                    <div className="flex items-center gap-4">
-                      <span className="capitalize">{report.type} Issue</span>
-                      <ComplaintModal userEmail={userEmail} report={report} />
+                    <div className="flex items-center gap-2">
+                      {!report.complaintSent ? (
+                        <ComplaintModal userEmail={userEmail} report={report} />
+                      ) : (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`h-9 gap-2 ${report.complaintStatus === 'completed' ? 'bg-green-100 text-green-700 border-green-200' :
+                                report.complaintStatus === 'processing' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                  ''
+                                }`}
+                            >
+                              {report.complaintStatus ? (
+                                <>
+                                  {report.complaintStatus === 'completed' ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                                  <span className="capitalize">{report.complaintStatus}</span>
+                                </>
+                              ) : "Complaint Status"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 bg-slate-800 border-slate-700 text-white p-4">
+                            <div className="space-y-3">
+                              <h4 className="font-medium text-lg border-b border-slate-700 pb-2">Complaint Details</h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-start gap-2 text-emerald-400">
+                                  <CheckCircle className="w-4 h-4 mt-0.5" />
+                                  <p>Complaint successfully sent on {new Date(report.complaintSentAt).toLocaleString()}</p>
+                                </div>
+                                <div className="bg-slate-900 p-2 rounded text-slate-300">
+                                  <p className="font-semibold text-xs text-slate-500 uppercase">Current Status</p>
+                                  <p className="capitalize text-white">
+                                    {report.complaintStatus || "Pending Review"}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteReport(report.id)}
+                        className="h-8"
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
